@@ -1,0 +1,5 @@
+/.quarto/
+docs/
+_deps/
+
+**/*.quarto_ipynb

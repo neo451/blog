@@ -1,0 +1,8 @@
+---
+title: "obsidian.nvim: looking back after 8 months of work"
+author: "Zizhou Teng"
+date: "2025-11-27"
+categories: [neovim]
+---
+
+WIP
