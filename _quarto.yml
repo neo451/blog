@@ -4,20 +4,21 @@ project:
 website:
   title: "zztopia"
   navbar:
-    left:
-      - text: pop culture rants
-        href: https://github.com/
-      - text: tech stuff
-        href: https://github.com/
     right:
       - about.qmd
       - icon: github
         href: https://github.com/
-      - icon: twitter
-        href: https://twitter.com
+# format:
+#   html:
+#     theme:
+#       - minty
+#       - brand
+#     css: styles.css
 format:
   html:
     theme:
-      - minty
+      - default
       - brand
-    css: styles.css
+    toc: true
+    respect-user-color-scheme: true
+    code-overflow: scroll
