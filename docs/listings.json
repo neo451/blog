@@ -1,9 +1,5 @@
 [
   {
-    "listing": "/docs/index.html",
-    "items": []
-  },
-  {
     "listing": "/index.html",
     "items": [
       "/posts/in-process-lsp-guide/index.html",

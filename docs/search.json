@@ -1,10 +1,24 @@
 [
   {
-    "objectID": "docs/index.html",
-    "href": "docs/index.html",
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "TODO"
+  },
+  {
+    "objectID": "posts/welcome/index.html",
+    "href": "posts/welcome/index.html",
+    "title": "Welcome To My Blog",
+    "section": "",
+    "text": "This is where I rant!"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
     "title": "zztopia",
     "section": "",
-    "text": "No matching items"
+    "text": "A guide to building a in-process LSP in neovim\n\n\n\nneovim\n\n\n\n\n\n\n\n\n\nNov 27, 2025\n\n\nZizhou Teng\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome To My Blog\n\n\n\nnews\n\n\n\n\n\n\n\n\n\nNov 23, 2025\n\n\nZizhou Teng\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "posts/in-process-lsp-guide/index.html",
@@ -68,26 +82,5 @@
     "title": "A guide to building a in-process LSP in neovim",
     "section": "Conclusion",
     "text": "Conclusion\nThere you go, have fun exploring. I actually have a lot more ideas that I want to implement, but I will leave it here so that I can post it before I procrastinate over perfectionism. Maybe will write a part 2 if I have enough good ideas."
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "zztopia",
-    "section": "",
-    "text": "A guide to building a in-process LSP in neovim\n\n\n\nneovim\n\n\n\n\n\n\n\n\n\nNov 27, 2025\n\n\nZizhou Teng\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome To My Blog\n\n\n\nnews\n\n\n\n\n\n\n\n\n\nNov 23, 2025\n\n\nZizhou Teng\n\n\n\n\n\nNo matching items"
-  },
-  {
-    "objectID": "posts/welcome/index.html",
-    "href": "posts/welcome/index.html",
-    "title": "Welcome To My Blog",
-    "section": "",
-    "text": "This is where I rant!"
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "About",
-    "section": "",
-    "text": "About this blog"
   }
 ]
