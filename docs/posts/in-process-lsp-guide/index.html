@@ -262,9 +262,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>      start_lsp<span class="op">(</span><span class="va">ev</span><span class="op">.</span><span class="va">buf</span><span class="op">)</span></span>
 <span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>   <span class="kw">end</span><span class="op">,</span></span>
 <span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="op">})</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<blockquote class="blockquote">
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
 <p>Note that in theory after <code>nvim-0.11</code> you could use <code>vim.lsp.config</code> which will be a bit more convenient, I just have not tried it and the improvements don’t concern the topic today.</p>
-</blockquote>
+</div>
+</div>
 <p>The most important API to know is <a href="https://neovim.io/doc/user/lsp.html#vim.lsp.start()"><code>:h vim.lsp.start</code></a>, it takes <code>vim.lsp.ClientConfig</code> and the two fields that concern us at the moment are:</p>
 <ul>
 <li><code>name</code>: arbitrary name for the LSP client. Should be unique per language server.</li>
@@ -346,7 +356,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="definition-and-references" class="level2">
 <h2 class="anchored" data-anchor-id="definition-and-references">Definition and References</h2>
-<p>LSP-related concepts forms a good mental map to <em>restructure and conceptualize scattered pieces of actions</em>, for example in obsidian.nvim, I had a revelation that everything from a <code>tag</code> to all kinds of <code>links</code> the plugin supports can just be thought of as <code>symbols</code> in LSP word that can be performed actions upon, and the two most important actions are <code>goto definition</code> and <code>find references</code>. (in obsidian jargon, it is <code>linking</code> and <code>backlinking</code>), quite like the idea that you can do all sorts of <code>motions</code> on different <code>textobjects</code> in vim.</p>
+<p>LSP-related concepts forms a good mental map to <em>restructure and conceptualize scattered pieces of actions</em>, for example in obsidian.nvim, I had a revelation that everything from a <code>tag</code> to all kinds of <code>links</code> the plugin supports can just be thought of as <code>symbols</code> in LSP world that can be performed actions upon, and the two most important actions are <code>goto definition</code> and <code>find references</code>. (in obsidian jargon, it is <code>linking</code> and <code>backlinking</code>), quite like the idea that you can do all sorts of <code>motions</code> on different <code>textobjects</code> in vim.</p>
 <p>So applying a similar logic, we can think <code>goto definition</code> in dictionary land could mean just finding the meaning of the word, and <code>find references</code> means looking up synonyms.</p>
 <p>My initial idea for a complete implementation will look up the definitions and references, and then write a formatted page of markdown describing the meaning for each of the word in a tmp file, then return a list of <code>lsp.Location</code> pointing to them.</p>
 <p>But since we did not implement <code>WordNet</code> queries, and the free dictionary API used above doesn’t provide a mechanism to look up synonyms, I came up with a rather fun and creative hack that kind of bypasses neovim’s handler pattern:</p>
@@ -368,7 +378,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">word</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">fn</span><span class="op">.</span>expand<span class="op">(</span><span class="st">"&lt;cword&gt;"</span><span class="op">)</span></span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">vim</span><span class="op">.</span><span class="va">ui</span><span class="op">.</span>open<span class="op">(</span><span class="fu">string.format</span><span class="op">(</span><span class="va">url</span><span class="op">,</span> <span class="va">word</span><span class="op">))</span></span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<p>That leads us to the natural of “LSP keymaps” in neovim, in many ways they are special, many of them correspond to a <code>vim.lsp.buf</code> function, which will properly handle all the servers attached to one buffer and display results properly, for example multiple <code>hover</code> results will be shown together in the hover window, try making out little <code>dict-lsp</code> to also load in <code>lua</code>, and run some hovers if you have not seen multiple servers in action.</p>
+<p>That leads us to the natural of “LSP keymaps” in neovim, in many ways they are special, many of them correspond to a <code>vim.lsp.buf</code> function, which will properly handle all the servers attached to one buffer and display results properly, for example multiple <code>hover</code> results will be shown together in the hover window, try making our little <code>dict-lsp</code> to also load in <code>lua</code>, and run some hovers if you have not seen multiple servers in action.</p>
 <p>This nice feature makes “LSP keymaps” <strong>infinitely overloadable</strong>, you just add a server with the capability and corresponding handler, whereas the <code>vim.keymap.set</code> example will only ever run that one function in markdown.</p>
 </section>
 <section id="completion" class="level2">
@@ -398,25 +408,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="va">handlers</span><span class="op">[</span><span class="va">ms</span><span class="op">.</span><span class="va">textDocument_completion</span><span class="op">]</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">params</span><span class="op">,</span> <span class="va">callback</span><span class="op">)</span></span>
 <span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">word</span> <span class="op">=</span> get_word_to_complete<span class="op">(</span><span class="va">params</span><span class="op">)</span></span>
 <span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">get_candidates</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">entries</span><span class="op">)</span></span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>      <span class="kw">local</span> <span class="va">items</span> <span class="op">=</span> <span class="op">{}</span></span>
-<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>      <span class="cf">for</span> <span class="va">k</span><span class="op">,</span> <span class="va">v</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span><span class="va">entries</span><span class="op">)</span> <span class="cf">do</span></span>
-<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>         <span class="va">items</span><span class="op">[</span><span class="va">k</span><span class="op">]</span> <span class="op">=</span> <span class="op">{</span> <span class="va">label</span> <span class="op">=</span> <span class="va">v</span><span class="op">,</span> <span class="va">kind</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">lsp</span><span class="op">.</span><span class="va">protocol</span><span class="op">.</span><span class="va">CompletionItemKind</span><span class="op">[</span><span class="st">"Text"</span><span class="op">]</span> <span class="op">}</span></span>
-<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>      <span class="cf">end</span></span>
-<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="va">vim</span><span class="op">.</span><span class="va">items</span></span>
-<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>   <span class="kw">end</span></span>
-<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">candidates</span> <span class="op">=</span> get_candidates<span class="op">(</span><span class="va">vim</span><span class="op">.</span><span class="va">fn</span><span class="op">.</span>spellsuggest<span class="op">(</span><span class="va">word</span><span class="op">))</span> <span class="co">-- a real implementation queries a dictionary here</span></span>
-<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>   <span class="va">candidates</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span>tbl_filter<span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">candidate</span><span class="op">)</span></span>
-<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="va">candidate</span><span class="op">.</span><span class="va">label</span><span class="op">:</span><span class="fu">find</span><span class="op">(</span><span class="st">"[ ']"</span><span class="op">)</span> <span class="op">==</span> <span class="kw">nil</span></span>
-<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>   <span class="kw">end</span><span class="op">,</span> <span class="va">candidates</span><span class="op">)</span></span>
-<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>   callback<span class="op">(</span><span class="kw">nil</span><span class="op">,</span> <span class="op">{</span></span>
-<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>      <span class="va">items</span> <span class="op">=</span> <span class="va">candidates</span><span class="op">,</span></span>
-<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>      <span class="va">isIncomplete</span> <span class="op">=</span> <span class="op">#</span><span class="va">candidates</span> <span class="op">&gt;</span> <span class="dv">0</span><span class="op">,</span></span>
-<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>   <span class="op">})</span></span>
-<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>      <span class="va">entries</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">fn</span><span class="op">.</span>matchfuzzy<span class="op">(</span><span class="va">entries</span><span class="op">,</span> <span class="va">word</span><span class="op">,</span> <span class="op">{</span> <span class="va">limit</span> <span class="op">=</span> <span class="dv">7</span> <span class="op">})</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>      <span class="kw">local</span> <span class="va">items</span> <span class="op">=</span> <span class="op">{}</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>      <span class="cf">for</span> <span class="va">k</span><span class="op">,</span> <span class="va">v</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span><span class="va">entries</span><span class="op">)</span> <span class="cf">do</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>         <span class="va">items</span><span class="op">[</span><span class="va">k</span><span class="op">]</span> <span class="op">=</span> <span class="op">{</span> <span class="va">label</span> <span class="op">=</span> <span class="va">v</span><span class="op">,</span> <span class="va">kind</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">lsp</span><span class="op">.</span><span class="va">protocol</span><span class="op">.</span><span class="va">CompletionItemKind</span><span class="op">[</span><span class="st">"Text"</span><span class="op">]</span> <span class="op">}</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>      <span class="cf">end</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="va">vim</span><span class="op">.</span><span class="va">items</span></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>   <span class="kw">end</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">candidates</span> <span class="op">=</span> get_candidates<span class="op">(</span><span class="va">vim</span><span class="op">.</span><span class="va">fn</span><span class="op">.</span>spellsuggest<span class="op">(</span><span class="va">word</span><span class="op">))</span> <span class="co">-- a real implementation queries a dictionary here</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>   <span class="va">candidates</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span>tbl_filter<span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">candidate</span><span class="op">)</span></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="va">candidate</span><span class="op">.</span><span class="va">label</span><span class="op">:</span><span class="fu">find</span><span class="op">(</span><span class="st">"[ ']"</span><span class="op">)</span> <span class="op">==</span> <span class="kw">nil</span></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>   <span class="kw">end</span><span class="op">,</span> <span class="va">candidates</span><span class="op">)</span></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>   callback<span class="op">(</span><span class="kw">nil</span><span class="op">,</span> <span class="op">{</span></span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>      <span class="va">items</span> <span class="op">=</span> <span class="va">candidates</span><span class="op">,</span></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>      <span class="va">isIncomplete</span> <span class="op">=</span> <span class="op">#</span><span class="va">candidates</span> <span class="op">&gt;</span> <span class="dv">0</span><span class="op">,</span></span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>   <span class="op">})</span></span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>

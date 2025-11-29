@@ -64,7 +64,9 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 ```
 
-> Note that in theory after `nvim-0.11` you could use `vim.lsp.config` which will be a bit more convenient, I just have not tried it and the improvements don't concern the topic today.
+::: {.callout-note}
+Note that in theory after `nvim-0.11` you could use `vim.lsp.config` which will be a bit more convenient, I just have not tried it and the improvements don't concern the topic today.
+:::
 
 The most important API to know is [`:h vim.lsp.start`](https://neovim.io/doc/user/lsp.html#vim.lsp.start()), it takes `vim.lsp.ClientConfig` and the two fields that concern us at the moment are:
 
@@ -163,7 +165,7 @@ Two points worth noting:
 
 ## Definition and References
 
-LSP-related concepts forms a good mental map to *restructure and conceptualize scattered pieces of actions*, for example in obsidian.nvim, I had a revelation that everything from a `tag` to all kinds of `links` the plugin supports can just be thought of as `symbols` in LSP word that can be performed actions upon, and the two most important actions are `goto definition` and `find references`. (in obsidian jargon, it is `linking` and `backlinking`), quite like the idea that you can do all sorts of `motions` on different `textobjects` in vim.
+LSP-related concepts forms a good mental map to *restructure and conceptualize scattered pieces of actions*, for example in obsidian.nvim, I had a revelation that everything from a `tag` to all kinds of `links` the plugin supports can just be thought of as `symbols` in LSP world that can be performed actions upon, and the two most important actions are `goto definition` and `find references`. (in obsidian jargon, it is `linking` and `backlinking`), quite like the idea that you can do all sorts of `motions` on different `textobjects` in vim.
 
 
 So applying a similar logic, we can think `goto definition` in dictionary land could mean just finding the meaning of the word, and `find references` means looking up synonyms.
@@ -201,7 +203,7 @@ vim.keymap.set("n", "grr", function()
 end)
 ```
 
-That leads us to the natural of "LSP keymaps" in neovim, in many ways they are special, many of them correspond to a `vim.lsp.buf` function, which will properly handle all the servers attached to one buffer and display results properly, for example multiple `hover` results will be shown together in the hover window, try making out little `dict-lsp` to also load in `lua`, and run some hovers if you have not seen multiple servers in action.
+That leads us to the natural of "LSP keymaps" in neovim, in many ways they are special, many of them correspond to a `vim.lsp.buf` function, which will properly handle all the servers attached to one buffer and display results properly, for example multiple `hover` results will be shown together in the hover window, try making our little `dict-lsp` to also load in `lua`, and run some hovers if you have not seen multiple servers in action.
 
 This nice feature makes "LSP keymaps" **infinitely overloadable**, you just add a server with the capability and corresponding handler, whereas the `vim.keymap.set` example will only ever run that one function in markdown.
 
@@ -241,6 +243,7 @@ end
 handlers[ms.textDocument_completion] = function(params, callback)
    local word = get_word_to_complete(params)
    local get_candidates = function(entries)
+      entries = vim.fn.matchfuzzy(entries, word, { limit = 7 })
       local items = {}
       for k, v in ipairs(entries) do
          items[k] = { label = v, kind = vim.lsp.protocol.CompletionItemKind["Text"] }
