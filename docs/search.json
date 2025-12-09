@@ -60,7 +60,7 @@
     "href": "posts/welcome/index.html",
     "title": "Welcome To My Blog",
     "section": "",
-    "text": "This is where I rant!"
+    "text": "This is where I rant!\nThis message is used to verify that this feed (feedId:221288917341488128) belongs to me (userId:221288528413246464)."
   },
   {
     "objectID": "posts/in-process-lsp-guide/index.html",

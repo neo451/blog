@@ -6,3 +6,5 @@ categories: [news]
 ---
 
 This is where I rant!
+
+This message is used to verify that this feed (feedId:221288917341488128) belongs to me (userId:221288528413246464).
