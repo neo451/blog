@@ -1,6 +1,7 @@
 ---
 title: "zztopia"
 listing:
+  feed: true
   contents: posts
   sort: "date desc"
   type: default

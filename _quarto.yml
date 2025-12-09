@@ -3,17 +3,15 @@ project:
 
 website:
   title: "zztopia"
+  site-url: https://neo451.github.io/blog/
+  description: "Where I rant about tech and pop culture stuff"
   navbar:
     right:
       - about.qmd
       - icon: github
         href: https://github.com/neo451
-# format:
-#   html:
-#     theme:
-#       - minty
-#       - brand
-#     css: styles.css
+      - icon: rss
+        href: index.xml
 format:
   html:
     theme:
