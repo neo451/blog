@@ -1,0 +1,254 @@
+---
+title: "A guide to building in-process LSP in neovim: Part 2"
+author : "Zizhou Teng"
+date: "2025-11-27"
+categories: [neovim]
+---
+
+Got rather nice feedback from my first [post](https://neo451.github.io/blog/posts/in-process-lsp-guide/), don't want to lose the streak, so let's do another one! It happens that I have been playing arround with implementing code action for [obsidian.nvim](https://github.com/obsidian-nvim/obsidian.nvim) and also working on a more fine-grained spell system for myself. Therefore, it makes perfect sense to add those improvements as code actions for the `dict-lsp` we worked on in part 1.
+
+
+## Where local spellfile goes
+
+The idea is that we keep a local spellfile that is unique to a project, and whenever we open a new buffer, we try to find the spellfile.
+
+So let's take care of that first:
+
+```lua
+---@param fname string
+---@return string?
+local function resolve_local_spellfile(fname)
+   local dir = vim.fs.root(fname, { ".git", ".spell" })
+
+   if not dir then
+      return
+   end
+
+   local spell_dir = vim.fs.joinpath(dir, ".spell")
+   local stat = vim.uv.fs_stat(spell_dir)
+   if not stat or not stat.type == "directory" then
+      return
+   end
+
+   local path = vim.fs.joinpath(spell_dir, ".en.utf-8.add")
+   if not vim.uv.fs_stat(path) then
+      vim.fn.writefile({}, path)
+      return
+   end
+   return path
+end
+```
+
+Rather easy to write with all the tools that neovim provides. Just note that I made it so that it will just silently fail if there's no root marker, so if I want to add local dictionary for a project, I just go `mkdir .spell`, and it stays out of my way if I don't want it.
+
+## Understanding vim's spellfile system
+
+tldr: [`:h spellfile`](https://neovim.io/doc/user/options.html#'spellfile')
+
+Essentially, spellfile is a list of comma separated paths local to buffer, that vim goes to check to show you spell check hints.
+
+The key is **a list of them**, it was somehow not obvious to me why this is actually very useful and great design until I saw [this post](https://www.reddit.com/r/neovim/comments/1o6rn4p/til_about_spellgood/). So you can add a `count` to `:spellgood` or `zg` (and their wrong counterparts), and this count does not meaning what they usually mean `how many times` like in most vim motions, they are actually the `index of the spellfile` to use.
+
+I am guessing this is originally meant to solve how to add words to spellfile for different languages, but it also is perfect for having a local/global spellfile setup. We just assume whatever is the first spellfile is the global spellfile, and append the local file that we resolve based on the workspace to the end, and adding to global is `:1spellgood word` and adding to local is `:{{last_index}}spellgood word`
+
+## Implementing the logic
+
+We are using the same file of part 1 here, go check it out if you have not.
+
+```lua
+local state {}
+
+---@param params lsp.DidOpenTextDocumentParams
+handlers[ms.textDocument_didOpen] = function(params)
+   local fname = vim.uri_to_fname(params.textDocument.uri)
+   local local_speelfile = resolve_local_spellfile(fname)
+   if not local_speelfile then
+      return
+   end
+   vim.bo.spellfile = vim.bo.spellfile .. "," .. local_speelfile
+   state.local_spell_file_index = #vim.split(vim.bo.spellfile, ",")
+end
+
+---@param buf integer
+---@return integer? client_id
+local function start_lsp(buf)
+   ---@type vim.lsp.ClientConfig
+   local client_cfg = {
+      name = "dict-lsp",
+      cmd = function()
+         return {
+            request = function(method, params, callback)
+               if handlers[method] then
+                  handlers[method](params, callback)
+                  return true
+               else
+                  return false
+               end
+            end,
+            notify = function(method, params, callback)
+               if handlers[method] then
+                  handlers[method](params, callback)
+                  return true
+               else
+                  return false
+               end
+            end,
+            is_closing = function() end,
+            terminate = function() end,
+         }
+      end,
+   }
+
+   return vim.lsp.start(client_cfg, { bufnr = buf, silent = false })
+end
+```
+
+In `start_lsp` function, we just copied the request handling to also handle notify, and add server capability `textDocumentSync = true` (shown later).
+
+This `didOpen` notification handler is basically a glorified `BufEnter` autocmd at this point, I am kind of just doing it for the seek of it for you to get the idea.
+
+So with this setup, you will have a second spellfile in any project that you have a `.spell` folder. And you can do `zg` to add to global, and `2zg` to add to local. But we can use code action to sweeten everything up even more!
+
+## Code Action
+
+```lua
+local commands = {
+   spell_good_local = {
+      desc = "Add `%s` to local spellfile",
+      fn = function(word)
+         if not state.local_spell_file_index then
+            vim.notify("no local spellfile available")
+            return
+         end
+         vim.cmd(state.local_spell_file_index .. "spellgood " .. word)
+      end,
+   },
+   spell_good_global = {
+      desc = "Add `%s` to global spellfile",
+      fn = function(word)
+         vim.cmd("spellgood " .. word) -- assume first is the global spellfile
+      end,
+   },
+}
+
+local chars = {}
+for i = 32, 126 do
+   table.insert(chars, string.char(i))
+end
+
+---@type lsp.InitializeResult
+local initializeResult = {
+   capabilities = {
+      hoverProvider = true,
+      definitionProvider = true,
+      referencesProvider = true,
+      completionProvider = {
+         triggerCharacters = chars,
+      },
+      codeActionProvider = true, -- NOTE
+      executeCommandProvider = { commands = vim.tbl_keys(commands) }, -- NOTE
+      textDocumentSync = 1, -- NOTE
+   },
+   serverInfo = {
+      name = "dict-lsp",
+      version = "0.0.1",
+   },
+}
+```
+
+First, we take care of the server capabilities like usual, it took me some while to find out that we need **two providers** enabled, one for code action and one for server commands.
+
+The architecture is, there 2 things that a code action does, first optionally it will do a text edit, if you use LSP code action plugins, you will get a preview diff of that edit, then a code action can invoke a server command, to do more complex things, like modifying a workspace configuration file (in our case the spellfile). And being able to run server commands is considered another capability.
+
+There's a pretty clear division of labour between the two, code action will look at the current editor state, like the text you have selected or some other internal states, and give you a selected list of actions that is good to run. While `executeCommandProvider` just takes a command name and some arguments (in this case passed from code action), and go run the function.
+
+Now that we understand everything, we can finish our implementation.
+
+```lua
+---@param params lsp.ExecuteCommandParams
+---@param callback fun(err?: lsp.ResponseError, result: any)
+handlers[ms.workspace_executeCommand] = function(params, callback)
+   local word = unpack(params.arguments)
+
+   local ok, err = pcall(commands[params.command].fn, word)
+   if not ok then
+      ---@diagnostic disable-next-line: assign-type-mismatch
+      return callback({ code = 1, message = err }, {})
+   end
+end
+
+---@param _ lsp.CodeActionParams
+---@param callback function
+handlers[ms.textDocument_codeAction] = function(_, callback)
+   local word = vim.fn.expand("<cword>") -- NOTE: can get the visual selected word from params.range, but it seems to be a bit buggy when I tested
+   if not word then
+      return callback(nil, {})
+   end
+
+   local function new_action(cfg, command)
+      local title = cfg.desc:format(word)
+      return {
+         title = title,
+         command = { title = title, command = command, arguments = { word } },
+      }
+   end
+
+   local res = {}
+   for _, cmd_name in ipairs({ "spell_good_local", "spell_good_global" }) do
+      local config = commands[cmd_name]
+      res[#res + 1] = new_action(config, cmd_name) -- prettier title
+   end
+   callback(nil, res)
+end
+```
+
+## Better spell correction
+
+Just when I was about to wrap this post up, and idea came to me that we can also dynamically register a few actions for correcting spelling. Both vim's `spellsuggest` and the spell sources of picker plugins, only let us do correction, but now our code action interface can either add it to dictionary or change the spelling, much more general and intuitive. (basically what [harper-ls](https://github.com/Automattic/harper) offers)
+
+Turns out it is also very easy to do:
+
+```lua
+commands.spell_suggest = {
+   fn = function(index)
+      vim.api.nvim_feedkeys(index .. "z=", "n", false)
+   end,
+}
+
+---@param _ lsp.CodeActionParams
+---@param callback function
+handlers[ms.textDocument_codeAction] = function(_, callback)
+   --- ...
+
+   if vim.fn.spellbadword(word)[1] ~= "" then
+      for _, cmd_name in ipairs({ "spell_good_local", "spell_good_global" }) do
+         local config = commands[cmd_name]
+         res[#res + 1] = new_action(config, cmd_name) -- prettier title
+      end
+      local suggests = vim.fn.spellsuggest(word, 3)
+      for idx, sug in ipairs(suggests) do
+         local title = ("Change `%s` to `%s`"):format(word, sug)
+         res[#res + 1] = {
+            title = title,
+            command = {
+               title = title,
+               command = "spell_suggest",
+               arguments = { idx },
+            },
+         }
+      end
+   end
+
+   callback(nil, res)
+end
+```
+
+Plus it also makes sense to not even show any actions from this source if there's no bad word under cursor, staying out of the way for other sources attached.
+
+## Conclusion
+
+There's still just a whole bunch of ways this idea can go, like completely bypass vim actions `zg`/`zm`, and just go do the textedit ourselves, so that user will get the preview that I mentioned before, but that is a bit too much for my taste.
+
+Another thing I am considering is to inject some of these ideas into obsidian.nvim. Because obsidian uses a global user dictionary (also just a list of good words), I can temporarily append it to obsidian buffer's spellfile option. On top of that, whenever user add new words into vim's spellfile from a buffer in obsidian vault, obsidian.nvim can also add it to that global obsidian spellfile, so that user will have synced dictionary between vim and obsidian.
+
+One thing I have learnt from the spellfile is to appreciate the beauty of "small flat list of anything", because it is a flat list, it doesn't have semantics, and the user can customize it to give the list their own meaning.

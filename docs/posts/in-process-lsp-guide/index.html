@@ -9,7 +9,7 @@
 <meta name="author" content="Zizhou Teng">
 <meta name="dcterms.date" content="2025-11-27">
 
-<title>A guide to building a in-process LSP in neovim – zztopia</title>
+<title>A guide to building a in-process LSP in neovim: Part 1 – zztopia</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -76,7 +76,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-c8ad9e5dbd60b7b70b38521ab19b7da4.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-49589e8c4e6ac755abc4d25680b81c78.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-ba8d99e66f008d88a3e1af2a9d372bfe.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -145,7 +145,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">A guide to building a in-process LSP in neovim</h1>
+      <h1 class="title">A guide to building a in-process LSP in neovim: Part 1</h1>
                                 <div class="quarto-categories">
                 <div class="quarto-category">neovim</div>
               </div>
@@ -226,6 +226,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="goal-of-this-guide">Goal of this guide</h2>
 <p>I have been enjoying using <a href="https://github.com/archie-Judd/blink-cmp-words">blink-cmp-words</a>, which provides completion for words and synonyms when I write essays. However, I sometimes get frustrated for not being able to hover over a word and get what I had just seen in the documentation window when doing completion. So building it into an LSP is the perfect solution.</p>
 <p>For the purpose of this guide, we will ignore all the details of actually querying the dictionary, and use various hacks and placeholders to get the idea across. I believe the eventual best solution would be using the same <code>WordNet</code> db approach that <code>blink-cmp-words</code> uses.</p>
+<ul>
+<li>The complete example project as a <a href="https://gist.github.com/neo451/13a9430955e5cb8b4b5a26c2f596f17c">gist</a></li>
+<li>If you want to learn how “real” LSP servers work, see this <a href="https://www.youtube.com/watch?v=YsdlcQoHqPY">video by tj</a></li>
+</ul>
 </section>
 <section id="infrastructure" class="level2">
 <h2 class="anchored" data-anchor-id="infrastructure">Infrastructure</h2>

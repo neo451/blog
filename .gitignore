@@ -1,4 +1,5 @@
 /.quarto/
 _deps/
+.spell/
 
 **/*.quarto_ipynb

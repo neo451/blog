@@ -1,5 +1,5 @@
 ---
-title: "A guide to building a in-process LSP in neovim"
+title: "A guide to building a in-process LSP in neovim: Part 1"
 author : "Zizhou Teng"
 date: "2025-11-27"
 categories: [neovim]
@@ -25,6 +25,9 @@ Below are my usual answers, and I intend to use this post with a concrete exampl
 I have been enjoying using [blink-cmp-words](https://github.com/archie-Judd/blink-cmp-words), which provides completion for words and synonyms when I write essays. However, I sometimes get frustrated for not being able to hover over a word and get what I had just seen in the documentation window when doing completion. So building it into an LSP is the perfect solution.
 
 For the purpose of this guide, we will ignore all the details of actually querying the dictionary, and use various hacks and placeholders to get the idea across. I believe the eventual best solution would be using the same `WordNet` db approach that `blink-cmp-words` uses.
+
+- The complete example project as a [gist](https://gist.github.com/neo451/13a9430955e5cb8b4b5a26c2f596f17c)
+- If you want to learn how "real" LSP servers work, see this [video by tj](https://www.youtube.com/watch?v=YsdlcQoHqPY)
 
 ## Infrastructure
 

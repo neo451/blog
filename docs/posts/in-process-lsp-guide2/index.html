@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.34">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Zizhou Teng">
+<meta name="dcterms.date" content="2025-11-27">
+
+<title>A guide to building in-process LSP in neovim: Part 2 – zztopia</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-c8ad9e5dbd60b7b70b38521ab19b7da4.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-ba8d99e66f008d88a3e1af2a9d372bfe.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">zztopia</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/neo451"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">A guide to building in-process LSP in neovim: Part 2</h1>
+                                <div class="quarto-categories">
+                <div class="quarto-category">neovim</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Zizhou Teng </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">November 27, 2025</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#where-local-spellfile-goes" id="toc-where-local-spellfile-goes" class="nav-link active" data-scroll-target="#where-local-spellfile-goes">Where local spellfile goes</a></li>
+  <li><a href="#understanding-vims-spellfile-system" id="toc-understanding-vims-spellfile-system" class="nav-link" data-scroll-target="#understanding-vims-spellfile-system">Understanding vim’s spellfile system</a></li>
+  <li><a href="#implementing-the-logic" id="toc-implementing-the-logic" class="nav-link" data-scroll-target="#implementing-the-logic">Implementing the logic</a></li>
+  <li><a href="#code-action" id="toc-code-action" class="nav-link" data-scroll-target="#code-action">Code Action</a></li>
+  <li><a href="#better-spell-correction" id="toc-better-spell-correction" class="nav-link" data-scroll-target="#better-spell-correction">Better spell correction</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<p>Got rather nice feedback from my first <a href="https://neo451.github.io/blog/posts/in-process-lsp-guide/">post</a>, don’t want to lose the streak, so let’s do another one! It happens that I have been playing arround with implementing code action for <a href="https://github.com/obsidian-nvim/obsidian.nvim">obsidian.nvim</a> and also working on a more fine-grained spell system for myself. Therefore, it makes perfect sense to add those improvements as code actions for the <code>dict-lsp</code> we worked on in part 1.</p>
+<section id="where-local-spellfile-goes" class="level2">
+<h2 class="anchored" data-anchor-id="where-local-spellfile-goes">Where local spellfile goes</h2>
+<p>The idea is that we keep a local spellfile that is unique to a project, and whenever we open a new buffer, we try to find the spellfile.</p>
+<p>So let’s take care of that first:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua code-with-copy"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@param</span><span class="co"> </span><span class="cv">fname</span><span class="co"> string</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@return</span><span class="co"> string?</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="kw">function</span> resolve_local_spellfile<span class="op">(</span><span class="va">fname</span><span class="op">)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">dir</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">fs</span><span class="op">.</span>root<span class="op">(</span><span class="va">fname</span><span class="op">,</span> <span class="op">{</span> <span class="st">".git"</span><span class="op">,</span> <span class="st">".spell"</span> <span class="op">})</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="kw">not</span> <span class="va">dir</span> <span class="cf">then</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">spell_dir</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">fs</span><span class="op">.</span>joinpath<span class="op">(</span><span class="va">dir</span><span class="op">,</span> <span class="st">".spell"</span><span class="op">)</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">stat</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">uv</span><span class="op">.</span>fs_stat<span class="op">(</span><span class="va">spell_dir</span><span class="op">)</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="kw">not</span> <span class="va">stat</span> <span class="kw">or</span> <span class="kw">not</span> <span class="va">stat</span><span class="op">.</span><span class="va">type</span> <span class="op">==</span> <span class="st">"directory"</span> <span class="cf">then</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">path</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">fs</span><span class="op">.</span>joinpath<span class="op">(</span><span class="va">spell_dir</span><span class="op">,</span> <span class="st">".en.utf-8.add"</span><span class="op">)</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="kw">not</span> <span class="va">vim</span><span class="op">.</span><span class="va">uv</span><span class="op">.</span>fs_stat<span class="op">(</span><span class="va">path</span><span class="op">)</span> <span class="cf">then</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>      <span class="va">vim</span><span class="op">.</span><span class="va">fn</span><span class="op">.</span>writefile<span class="op">({},</span> <span class="va">path</span><span class="op">)</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="va">path</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Rather easy to write with all the tools that neovim provides. Just note that I made it so that it will just silently fail if there’s no root marker, so if I want to add local dictionary for a project, I just go <code>mkdir .spell</code>, and it stays out of my way if I don’t want it.</p>
+</section>
+<section id="understanding-vims-spellfile-system" class="level2">
+<h2 class="anchored" data-anchor-id="understanding-vims-spellfile-system">Understanding vim’s spellfile system</h2>
+<p>tldr: <a href="https://neovim.io/doc/user/options.html#" title="spellfile"><code>:h spellfile</code></a></p>
+<p>Essentially, spellfile is a list of comma separated paths local to buffer, that vim goes to check to show you spell check hints.</p>
+<p>The key is <strong>a list of them</strong>, it was somehow not obvious to me why this is actually very useful and great design until I saw <a href="https://www.reddit.com/r/neovim/comments/1o6rn4p/til_about_spellgood/">this post</a>. So you can add a <code>count</code> to <code>:spellgood</code> or <code>zg</code> (and their wrong counterparts), and this count does not meaning what they usually mean <code>how many times</code> like in most vim motions, they are actually the <code>index of the spellfile</code> to use.</p>
+<p>I am guessing this is originally meant to solve how to add words to spellfile for different languages, but it also is perfect for having a local/global spellfile setup. We just assume whatever is the first spellfile is the global spellfile, and append the local file that we resolve based on the workspace to the end, and adding to global is <code>:1spellgood word</code> and adding to local is <code>:{{last_index}}spellgood word</code></p>
+</section>
+<section id="implementing-the-logic" class="level2">
+<h2 class="anchored" data-anchor-id="implementing-the-logic">Implementing the logic</h2>
+<p>We are using the same file of part 1 here, go check it out if you have not.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua code-with-copy"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">state</span> <span class="op">{}</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@param</span><span class="co"> </span><span class="cv">params</span><span class="co"> lsp.DidOpenTextDocumentParams</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="va">handlers</span><span class="op">[</span><span class="va">ms</span><span class="op">.</span><span class="va">textDocument_didOpen</span><span class="op">]</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">params</span><span class="op">)</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">fname</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span>uri_to_fname<span class="op">(</span><span class="va">params</span><span class="op">.</span><span class="va">textDocument</span><span class="op">.</span><span class="va">uri</span><span class="op">)</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">local_speelfile</span> <span class="op">=</span> resolve_local_spellfile<span class="op">(</span><span class="va">fname</span><span class="op">)</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="kw">not</span> <span class="va">local_speelfile</span> <span class="cf">then</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>   <span class="va">vim</span><span class="op">.</span><span class="va">bo</span><span class="op">.</span><span class="va">spellfile</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">bo</span><span class="op">.</span><span class="va">spellfile</span> <span class="op">..</span> <span class="st">","</span> <span class="op">..</span> <span class="va">local_speelfile</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>   <span class="va">state</span><span class="op">.</span><span class="va">local_spell_file_index</span> <span class="op">=</span> <span class="op">#</span><span class="va">vim</span><span class="op">.</span>split<span class="op">(</span><span class="va">vim</span><span class="op">.</span><span class="va">bo</span><span class="op">.</span><span class="va">spellfile</span><span class="op">,</span> <span class="st">","</span><span class="op">)</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@param</span><span class="co"> </span><span class="cv">buf</span><span class="co"> integer</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@return</span><span class="co"> integer? client_id</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="kw">function</span> start_lsp<span class="op">(</span><span class="va">buf</span><span class="op">)</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>   <span class="co">---</span><span class="an">@type</span><span class="co"> vim.lsp.ClientConfig</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">client_cfg</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>      <span class="va">name</span> <span class="op">=</span> <span class="st">"dict-lsp"</span><span class="op">,</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>      <span class="va">cmd</span> <span class="op">=</span> <span class="kw">function</span><span class="op">()</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>         <span class="cf">return</span> <span class="op">{</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>            <span class="va">request</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">method</span><span class="op">,</span> <span class="va">params</span><span class="op">,</span> <span class="va">callback</span><span class="op">)</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>               <span class="cf">if</span> <span class="va">handlers</span><span class="op">[</span><span class="va">method</span><span class="op">]</span> <span class="cf">then</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>                  <span class="va">handlers</span><span class="op">[</span><span class="va">method</span><span class="op">](</span><span class="va">params</span><span class="op">,</span> <span class="va">callback</span><span class="op">)</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>                  <span class="cf">return</span> <span class="kw">true</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>               <span class="cf">else</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>                  <span class="cf">return</span> <span class="kw">false</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>               <span class="cf">end</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>            <span class="kw">end</span><span class="op">,</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>            <span class="va">notify</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">method</span><span class="op">,</span> <span class="va">params</span><span class="op">,</span> <span class="va">callback</span><span class="op">)</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>               <span class="cf">if</span> <span class="va">handlers</span><span class="op">[</span><span class="va">method</span><span class="op">]</span> <span class="cf">then</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>                  <span class="va">handlers</span><span class="op">[</span><span class="va">method</span><span class="op">](</span><span class="va">params</span><span class="op">,</span> <span class="va">callback</span><span class="op">)</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>                  <span class="cf">return</span> <span class="kw">true</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>               <span class="cf">else</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>                  <span class="cf">return</span> <span class="kw">false</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>               <span class="cf">end</span></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>            <span class="kw">end</span><span class="op">,</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>            <span class="va">is_closing</span> <span class="op">=</span> <span class="kw">function</span><span class="op">()</span> <span class="kw">end</span><span class="op">,</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>            <span class="va">terminate</span> <span class="op">=</span> <span class="kw">function</span><span class="op">()</span> <span class="kw">end</span><span class="op">,</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>         <span class="op">}</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span><span class="op">,</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>   <span class="cf">return</span> <span class="va">vim</span><span class="op">.</span><span class="va">lsp</span><span class="op">.</span>start<span class="op">(</span><span class="va">client_cfg</span><span class="op">,</span> <span class="op">{</span> <span class="va">bufnr</span> <span class="op">=</span> <span class="va">buf</span><span class="op">,</span> <span class="va">silent</span> <span class="op">=</span> <span class="kw">false</span> <span class="op">})</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>In <code>start_lsp</code> function, we just copied the request handling to also handle notify, and add server capability <code>textDocumentSync = true</code> (shown later).</p>
+<p>This <code>didOpen</code> notification handler is basically a glorified <code>BufEnter</code> autocmd at this point, I am kind of just doing it for the seek of it for you to get the idea.</p>
+<p>So with this setup, you will have a second spellfile in any project that you have a <code>.spell</code> folder. And you can do <code>zg</code> to add to global, and <code>2zg</code> to add to local. But we can use code action to sweeten everything up even more!</p>
+</section>
+<section id="code-action" class="level2">
+<h2 class="anchored" data-anchor-id="code-action">Code Action</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode lua code-with-copy"><code class="sourceCode lua"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">commands</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">spell_good_local</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>      <span class="va">desc</span> <span class="op">=</span> <span class="st">"Add `%s` to local spellfile"</span><span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="va">fn</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">word</span><span class="op">)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>         <span class="cf">if</span> <span class="kw">not</span> <span class="va">state</span><span class="op">.</span><span class="va">local_spell_file_index</span> <span class="cf">then</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>            <span class="va">vim</span><span class="op">.</span>notify<span class="op">(</span><span class="st">"no local spellfile available"</span><span class="op">)</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>         <span class="cf">end</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>         <span class="va">vim</span><span class="op">.</span>cmd<span class="op">(</span><span class="va">state</span><span class="op">.</span><span class="va">local_spell_file_index</span> <span class="op">..</span> <span class="st">"spellgood "</span> <span class="op">..</span> <span class="va">word</span><span class="op">)</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span><span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>   <span class="op">},</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>   <span class="va">spell_good_global</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>      <span class="va">desc</span> <span class="op">=</span> <span class="st">"Add `%s` to global spellfile"</span><span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>      <span class="va">fn</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">word</span><span class="op">)</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>         <span class="va">vim</span><span class="op">.</span>cmd<span class="op">(</span><span class="st">"spellgood "</span> <span class="op">..</span> <span class="va">word</span><span class="op">)</span> <span class="co">-- assume first is the global spellfile</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>      <span class="kw">end</span><span class="op">,</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>   <span class="op">},</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">chars</span> <span class="op">=</span> <span class="op">{}</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="va">i</span> <span class="op">=</span> <span class="dv">32</span><span class="op">,</span> <span class="dv">126</span> <span class="cf">do</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>   <span class="fu">table.insert</span><span class="op">(</span><span class="va">chars</span><span class="op">,</span> <span class="fu">string.char</span><span class="op">(</span><span class="va">i</span><span class="op">))</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@type</span><span class="co"> lsp.InitializeResult</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">initializeResult</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>   <span class="va">capabilities</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>      <span class="va">hoverProvider</span> <span class="op">=</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>      <span class="va">definitionProvider</span> <span class="op">=</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>      <span class="va">referencesProvider</span> <span class="op">=</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>      <span class="va">completionProvider</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>         <span class="va">triggerCharacters</span> <span class="op">=</span> <span class="va">chars</span><span class="op">,</span></span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>      <span class="op">},</span></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>      <span class="va">codeActionProvider</span> <span class="op">=</span> <span class="kw">true</span><span class="op">,</span> <span class="co">-- </span><span class="al">NOTE</span></span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>      <span class="va">executeCommandProvider</span> <span class="op">=</span> <span class="op">{</span> <span class="va">commands</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span>tbl_keys<span class="op">(</span><span class="va">commands</span><span class="op">)</span> <span class="op">},</span> <span class="co">-- </span><span class="al">NOTE</span></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>      <span class="va">textDocumentSync</span> <span class="op">=</span> <span class="dv">1</span><span class="op">,</span> <span class="co">-- </span><span class="al">NOTE</span></span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>   <span class="op">},</span></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>   <span class="va">serverInfo</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>      <span class="va">name</span> <span class="op">=</span> <span class="st">"dict-lsp"</span><span class="op">,</span></span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>      <span class="va">version</span> <span class="op">=</span> <span class="st">"0.0.1"</span><span class="op">,</span></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>   <span class="op">},</span></span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>First, we take care of the server capabilities like usual, it took me some while to find out that we need <strong>two providers</strong> enabled, one for code action and one for server commands.</p>
+<p>The architecture is, there 2 things that a code action does, first optionally it will do a text edit, if you use LSP code action plugins, you will get a preview diff of that edit, then a code action can invoke a server command, to do more complex things, like modifying a workspace configuration file (in our case the spellfile). And being able to run server commands is considered another capability.</p>
+<p>There’s a pretty clear division of labour between the two, code action will look at the current editor state, like the text you have selected or some other internal states, and give you a selected list of actions that is good to run. While <code>executeCommandProvider</code> just takes a command name and some arguments (in this case passed from code action), and go run the function.</p>
+<p>Now that we understand everything, we can finish our implementation.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode lua code-with-copy"><code class="sourceCode lua"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@param</span><span class="co"> </span><span class="cv">params</span><span class="co"> lsp.ExecuteCommandParams</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@param</span><span class="co"> </span><span class="cv">callback</span><span class="co"> fun(err?: lsp.ResponseError, result: any)</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="va">handlers</span><span class="op">[</span><span class="va">ms</span><span class="op">.</span><span class="va">workspace_executeCommand</span><span class="op">]</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">params</span><span class="op">,</span> <span class="va">callback</span><span class="op">)</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">word</span> <span class="op">=</span> <span class="fu">unpack</span><span class="op">(</span><span class="va">params</span><span class="op">.</span><span class="va">arguments</span><span class="op">)</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">ok</span><span class="op">,</span> <span class="va">err</span> <span class="op">=</span> <span class="fu">pcall</span><span class="op">(</span><span class="va">commands</span><span class="op">[</span><span class="va">params</span><span class="op">.</span><span class="va">command</span><span class="op">].</span><span class="va">fn</span><span class="op">,</span> <span class="va">word</span><span class="op">)</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="kw">not</span> <span class="va">ok</span> <span class="cf">then</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>      <span class="co">---</span><span class="an">@diagnostic</span><span class="co"> disable-next-line: assign-type-mismatch</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> callback<span class="op">({</span> <span class="va">code</span> <span class="op">=</span> <span class="dv">1</span><span class="op">,</span> <span class="va">message</span> <span class="op">=</span> <span class="va">err</span> <span class="op">},</span> <span class="op">{})</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@param</span><span class="co"> </span><span class="cv">_</span><span class="co"> lsp.CodeActionParams</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@param</span><span class="co"> </span><span class="cv">callback</span><span class="co"> function</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="va">handlers</span><span class="op">[</span><span class="va">ms</span><span class="op">.</span><span class="va">textDocument_codeAction</span><span class="op">]</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="cn">_</span><span class="op">,</span> <span class="va">callback</span><span class="op">)</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">word</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">fn</span><span class="op">.</span>expand<span class="op">(</span><span class="st">"&lt;cword&gt;"</span><span class="op">)</span> <span class="co">-- </span><span class="al">NOTE</span><span class="co">: can get the visual selected word from params.range, but it seems to be a bit buggy when I tested</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="kw">not</span> <span class="va">word</span> <span class="cf">then</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> callback<span class="op">(</span><span class="kw">nil</span><span class="op">,</span> <span class="op">{})</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="kw">function</span> new_action<span class="op">(</span><span class="va">cfg</span><span class="op">,</span> <span class="va">command</span><span class="op">)</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>      <span class="kw">local</span> <span class="va">title</span> <span class="op">=</span> <span class="va">cfg</span><span class="op">.</span><span class="va">desc</span><span class="op">:</span><span class="fu">format</span><span class="op">(</span><span class="va">word</span><span class="op">)</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="op">{</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>         <span class="va">title</span> <span class="op">=</span> <span class="va">title</span><span class="op">,</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>         <span class="va">command</span> <span class="op">=</span> <span class="op">{</span> <span class="va">title</span> <span class="op">=</span> <span class="va">title</span><span class="op">,</span> <span class="va">command</span> <span class="op">=</span> <span class="va">command</span><span class="op">,</span> <span class="va">arguments</span> <span class="op">=</span> <span class="op">{</span> <span class="va">word</span> <span class="op">}</span> <span class="op">},</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>      <span class="op">}</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>   <span class="kw">end</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">res</span> <span class="op">=</span> <span class="op">{}</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>   <span class="cf">for</span> <span class="cn">_</span><span class="op">,</span> <span class="va">cmd_name</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">({</span> <span class="st">"spell_good_local"</span><span class="op">,</span> <span class="st">"spell_good_global"</span> <span class="op">})</span> <span class="cf">do</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>      <span class="kw">local</span> <span class="va">config</span> <span class="op">=</span> <span class="va">commands</span><span class="op">[</span><span class="va">cmd_name</span><span class="op">]</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>      <span class="va">res</span><span class="op">[#</span><span class="va">res</span> <span class="op">+</span> <span class="dv">1</span><span class="op">]</span> <span class="op">=</span> new_action<span class="op">(</span><span class="va">config</span><span class="op">,</span> <span class="va">cmd_name</span><span class="op">)</span> <span class="co">-- prettier title</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>   callback<span class="op">(</span><span class="kw">nil</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="better-spell-correction" class="level2">
+<h2 class="anchored" data-anchor-id="better-spell-correction">Better spell correction</h2>
+<p>Just when I was about to wrap this post up, and idea came to me that we can also dynamically register a few actions for correcting spelling. Both vim’s <code>spellsuggest</code> and the spell sources of picker plugins, only let us do correction, but now our code action interface can either add it to dictionary or change the spelling, much more general and intuitive. (basically what <a href="https://github.com/Automattic/harper">harper-ls</a> offers)</p>
+<p>Turns out it is also very easy to do:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode lua code-with-copy"><code class="sourceCode lua"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="va">commands</span><span class="op">.</span><span class="va">spell_suggest</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">fn</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">index</span><span class="op">)</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>      <span class="va">vim</span><span class="op">.</span><span class="va">api</span><span class="op">.</span>nvim_feedkeys<span class="op">(</span><span class="va">index</span> <span class="op">..</span> <span class="st">"z="</span><span class="op">,</span> <span class="st">"n"</span><span class="op">,</span> <span class="kw">false</span><span class="op">)</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>   <span class="kw">end</span><span class="op">,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@param</span><span class="co"> </span><span class="cv">_</span><span class="co"> lsp.CodeActionParams</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">---</span><span class="an">@param</span><span class="co"> </span><span class="cv">callback</span><span class="co"> function</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="va">handlers</span><span class="op">[</span><span class="va">ms</span><span class="op">.</span><span class="va">textDocument_codeAction</span><span class="op">]</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="cn">_</span><span class="op">,</span> <span class="va">callback</span><span class="op">)</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>   <span class="co">--- ...</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">vim</span><span class="op">.</span><span class="va">fn</span><span class="op">.</span>spellbadword<span class="op">(</span><span class="va">word</span><span class="op">)[</span><span class="dv">1</span><span class="op">]</span> <span class="op">~=</span> <span class="st">""</span> <span class="cf">then</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>      <span class="cf">for</span> <span class="cn">_</span><span class="op">,</span> <span class="va">cmd_name</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">({</span> <span class="st">"spell_good_local"</span><span class="op">,</span> <span class="st">"spell_good_global"</span> <span class="op">})</span> <span class="cf">do</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>         <span class="kw">local</span> <span class="va">config</span> <span class="op">=</span> <span class="va">commands</span><span class="op">[</span><span class="va">cmd_name</span><span class="op">]</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">[#</span><span class="va">res</span> <span class="op">+</span> <span class="dv">1</span><span class="op">]</span> <span class="op">=</span> new_action<span class="op">(</span><span class="va">config</span><span class="op">,</span> <span class="va">cmd_name</span><span class="op">)</span> <span class="co">-- prettier title</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>      <span class="cf">end</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>      <span class="kw">local</span> <span class="va">suggests</span> <span class="op">=</span> <span class="va">vim</span><span class="op">.</span><span class="va">fn</span><span class="op">.</span>spellsuggest<span class="op">(</span><span class="va">word</span><span class="op">,</span> <span class="dv">3</span><span class="op">)</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>      <span class="cf">for</span> <span class="va">idx</span><span class="op">,</span> <span class="va">sug</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span><span class="va">suggests</span><span class="op">)</span> <span class="cf">do</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>         <span class="kw">local</span> <span class="va">title</span> <span class="op">=</span> <span class="op">(</span><span class="st">"Change `%s` to `%s`"</span><span class="op">):</span><span class="fu">format</span><span class="op">(</span><span class="va">word</span><span class="op">,</span> <span class="va">sug</span><span class="op">)</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>         <span class="va">res</span><span class="op">[#</span><span class="va">res</span> <span class="op">+</span> <span class="dv">1</span><span class="op">]</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>            <span class="va">title</span> <span class="op">=</span> <span class="va">title</span><span class="op">,</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>            <span class="va">command</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>               <span class="va">title</span> <span class="op">=</span> <span class="va">title</span><span class="op">,</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>               <span class="va">command</span> <span class="op">=</span> <span class="st">"spell_suggest"</span><span class="op">,</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>               <span class="va">arguments</span> <span class="op">=</span> <span class="op">{</span> <span class="va">idx</span> <span class="op">},</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>            <span class="op">},</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>         <span class="op">}</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>      <span class="cf">end</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>   callback<span class="op">(</span><span class="kw">nil</span><span class="op">,</span> <span class="va">res</span><span class="op">)</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Plus it also makes sense to not even show any actions from this source if there’s no bad word under cursor, staying out of the way for other sources attached.</p>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>There’s still just a whole bunch of ways this idea can go, like completely bypass vim actions <code>zg</code>/<code>zm</code>, and just go do the textedit ourselves, so that user will get the preview that I mentioned before, but that is a bit too much for my taste.</p>
+<p>Another thing I am considering is to inject some of these ideas into obsidian.nvim. Because obsidian uses a global user dictionary (also just a list of good words), I can temporarily append it to obsidian buffer’s spellfile option. On top of that, whenever user add new words into vim’s spellfile from a buffer in obsidian vault, obsidian.nvim can also add it to that global obsidian spellfile, so that user will have synced dictionary between vim and obsidian.</p>
+<p>One thing I have learnt from the spellfile is to appreciate the beauty of “small flat list of anything”, because it is a flat list, it doesn’t have semantics, and the user can customize it to give the list their own meaning.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
