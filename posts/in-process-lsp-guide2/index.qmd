@@ -1,7 +1,7 @@
 ---
 title: "A guide to building in-process LSP in neovim: Part 2"
 author : "Zizhou Teng"
-date: "2025-11-27"
+date: "2025-12-9"
 categories: [neovim]
 ---
 

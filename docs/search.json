@@ -1,5 +1,12 @@
 [
   {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "TODO"
+  },
+  {
     "objectID": "posts/in-process-lsp-guide/index.html",
     "href": "posts/in-process-lsp-guide/index.html",
     "title": "A guide to building a in-process LSP in neovim: Part 1",
@@ -67,7 +74,7 @@
     "href": "index.html",
     "title": "zztopia",
     "section": "",
-    "text": "A guide to building a in-process LSP in neovim: Part 1\n\n\n\nneovim\n\n\n\n\n\n\n\n\n\nNov 27, 2025\n\n\nZizhou Teng\n\n\n\n\n\n\n\n\n\n\n\n\nA guide to building in-process LSP in neovim: Part 2\n\n\n\nneovim\n\n\n\n\n\n\n\n\n\nNov 27, 2025\n\n\nZizhou Teng\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome To My Blog\n\n\n\nnews\n\n\n\n\n\n\n\n\n\nNov 23, 2025\n\n\nZizhou Teng\n\n\n\n\n\nNo matching items"
+    "text": "A guide to building in-process LSP in neovim: Part 2\n\n\n\nneovim\n\n\n\n\n\n\n\n\n\nDec 9, 2025\n\n\nZizhou Teng\n\n\n\n\n\n\n\n\n\n\n\n\nA guide to building a in-process LSP in neovim: Part 1\n\n\n\nneovim\n\n\n\n\n\n\n\n\n\nNov 27, 2025\n\n\nZizhou Teng\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome To My Blog\n\n\n\nnews\n\n\n\n\n\n\n\n\n\nNov 23, 2025\n\n\nZizhou Teng\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "posts/welcome/index.html",
@@ -75,20 +82,6 @@
     "title": "Welcome To My Blog",
     "section": "",
     "text": "This is where I rant!"
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "About",
-    "section": "",
-    "text": "TODO"
-  },
-  {
-    "objectID": "test.html",
-    "href": "test.html",
-    "title": "asdad",
-    "section": "",
-    "text": "Right\nasd\nasdad\n\n\n\n\n\n\nasdad\nasdsa"
   },
   {
     "objectID": "posts/in-process-lsp-guide2/index.html",

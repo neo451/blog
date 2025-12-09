@@ -2,8 +2,8 @@
   {
     "listing": "/index.html",
     "items": [
-      "/posts/in-process-lsp-guide/index.html",
       "/posts/in-process-lsp-guide2/index.html",
+      "/posts/in-process-lsp-guide/index.html",
       "/posts/welcome/index.html"
     ]
   }
