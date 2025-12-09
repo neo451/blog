@@ -1,5 +1,6 @@
 project:
   type: website
+  output-dir: docs
 
 website:
   title: "zztopia"
@@ -8,10 +9,10 @@ website:
   navbar:
     right:
       - about.qmd
-      - icon: github
-        href: https://github.com/neo451
       - icon: rss
         href: index.xml
+      - icon: github
+        href: https://github.com/neo451
 format:
   html:
     theme:

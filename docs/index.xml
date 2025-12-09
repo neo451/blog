@@ -2051,7 +2051,7 @@ font-style: inherit;">end</span></span></code></pre></div>
   <pubDate>Tue, 09 Dec 2025 00:00:00 GMT</pubDate>
 </item>
 <item>
-  <title>A guide to building a in-process LSP in neovim: Part 1</title>
+  <title>A guide to building in-process LSP in neovim: Part 1</title>
   <dc:creator>Zizhou Teng</dc:creator>
   <link>https://neo451.github.io/blog/posts/in-process-lsp-guide/</link>
   <description><![CDATA[ 
